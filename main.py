@@ -4,7 +4,6 @@ import pygame
 SCREEN_HEIGHT = 800
 SCREEN_WIDTH = 1280
 FPS = 60
-DEBUG = False
 
 
 class Player(pygame.sprite.Sprite):
@@ -63,15 +62,12 @@ class Player(pygame.sprite.Sprite):
         if (self.rect.right > SCREEN_WIDTH and self.dx > 0) or (self.rect.left < 0 and self.dx < 0):
             if abs(self.dx) > 400:
                 self.collide.play()
-            self.dx = -(self.dx + (0 - self.dx / 2))
+            self.dx = round(-(self.dx + (0 - self.dx / 2)))
 
         if self.rect.top < 0 or self.rect.bottom > SCREEN_HEIGHT:
             self.dy = 0
 
         self.laser_1_cooldown_state = max(self.laser_1_cooldown_state - dt, 0)
-
-        if DEBUG:
-            print("Player.dx = {}, dy = {}".format(self.dx, self.dy))
 
 
 class Star(object):
@@ -114,6 +110,7 @@ class Starfield(object):
 
 class Game(object):
     def run(self, screen):
+        stats = False
         clock = pygame.time.Clock()
 
         sprites = pygame.sprite.Group()
@@ -121,6 +118,8 @@ class Game(object):
         self.player = Player(sprites)
         background = pygame.image.load('art/spacefield.png')
         starfield = Starfield(screen)
+        show_starfield = True
+        font = pygame.font.Font('fonts/ShareTechMono-Regular.ttf', 16, bold=True)
 
         while True:
             dt = clock.tick(FPS)
@@ -130,11 +129,26 @@ class Game(object):
                     return
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     return
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
+                    stats = not stats
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
+                    show_starfield = not show_starfield
 
             screen.blit(background, (0, 0))
-            starfield.update(dt / 1000)
+            if show_starfield:
+                starfield.update(dt / 1000)
             sprites.update(dt / 1000., self)
             sprites.draw(screen)
+            if stats:
+                lines = [
+                    "FPS {:.0f}".format(clock.get_fps()),
+                    "Player dx={:+} dy={:+}".format(self.player.dx, self.player.dy),
+                ]
+                pixel_offset = 10
+                for line in lines:
+                    surface = font.render(line, True, (200, 200, 200))
+                    screen.blit(surface, (10, pixel_offset))
+                    pixel_offset += 20
             pygame.display.flip()
 
 
