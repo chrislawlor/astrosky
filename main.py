@@ -134,15 +134,37 @@ class Starfield(object):
             star.draw()
 
 
+class Background(pygame.sprite.Sprite):
+    def __init__(self, *groups):
+        super().__init__(*groups)
+        self.image = pygame.image.load('assets/art/spacefield1600x1000.png')
+        # image_width = self.image.get_width()
+        # x = -(SCREEN_WIDTH / 2)
+        self.rect = pygame.rect.Rect((0, 0), self.image.get_size())
+
+    def update(self, player, screen):
+        # if player is all the way to the left, image should be all the way
+        # to the right
+        parallax = 0.05
+        screen_midtop = SCREEN_WIDTH / 2
+        player_x = player.rect.centerx
+        can_move = self.rect.width - SCREEN_WIDTH
+
+        self.rect.centerx = screen_midtop - player_x
+        # player_offset = screen.rect.midtop - player.rect.x
+        # self.rect.midtop = screen.rect.midtop - player_offset
+
+
 class Game(object):
     def run(self, screen):
         stats = False
         clock = pygame.time.Clock()
 
         sprites = pygame.sprite.Group()
+        background_sprites = pygame.sprite.Group()
 
         self.player = Player((SCREEN_WIDTH / 2, 650), sprites)
-        background = pygame.image.load('assets/art/spacefield1600x1000.png')
+        self.background = Background(background_sprites)
         starfield = Starfield(screen)
         show_starfield = True
         font = pygame.font.Font('assets/fonts/ShareTechMono-Regular.ttf', 16, bold=True)
@@ -154,7 +176,7 @@ class Game(object):
         paused = False
 
         while True:
-            dt = clock.tick(FPS)
+            dt = clock.tick(FPS) / 1000.
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -176,10 +198,11 @@ class Game(object):
             if paused:
                 continue
 
-            screen.blit(background, (0, 0))
+            background_sprites.update(self.player, screen)
+            background_sprites.draw(screen)
             if show_starfield:
-                starfield.update(dt / 1000)
-            sprites.update(dt / 1000., self)
+                starfield.update(dt)
+            sprites.update(dt, self)
             sprites.draw(screen)
             if stats:
                 lines = [
