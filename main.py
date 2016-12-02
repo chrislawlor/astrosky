@@ -1,3 +1,4 @@
+from random import randrange, choice
 import pygame
 
 SCREEN_HEIGHT = 800
@@ -73,6 +74,44 @@ class Player(pygame.sprite.Sprite):
             print("Player.dx = {}, dy = {}".format(self.dx, self.dy))
 
 
+class Star(object):
+    def __init__(self, screen):
+        self.screen = screen
+        self.y = randrange(0, screen.get_height() - 1)
+        self._randomize()
+
+    def _randomize(self):
+        self.x = randrange(0, self.screen.get_width())
+        self.dx, self.size, self.color = choice([
+            (4, 1, (100, 100, 100)),
+            (6, 1, (120, 120, 120)),
+            (8, 1, (180, 180, 180))
+        ])
+
+    def draw(self):
+        self.screen.fill(self.color, (self.x, self.y, self.size, self.size))
+
+    def update(self, dt):
+        self.y += self.dx * dt
+        if self.y >= self.screen.get_height():
+            self.y = 0
+            self._randomize()
+
+
+class Starfield(object):
+    def __init__(self, screen, max_stars=300):
+        self.stars = []
+        self.screen = screen
+        for _ in range(max_stars):
+            star = Star(self.screen)
+            self.stars.append(star)
+
+    def update(self, dt):
+        for star in self.stars:
+            star.update(dt)
+            star.draw()
+
+
 class Game(object):
     def run(self, screen):
         clock = pygame.time.Clock()
@@ -81,6 +120,7 @@ class Game(object):
 
         self.player = Player(sprites)
         background = pygame.image.load('art/spacefield.png')
+        starfield = Starfield(screen)
 
         while True:
             dt = clock.tick(FPS)
@@ -92,6 +132,7 @@ class Game(object):
                     return
 
             screen.blit(background, (0, 0))
+            starfield.update(dt / 1000)
             sprites.update(dt / 1000., self)
             sprites.draw(screen)
             pygame.display.flip()
