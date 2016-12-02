@@ -1,4 +1,5 @@
 from random import randrange, choice
+from math import copysign
 import pygame
 
 SCREEN_HEIGHT = 800
@@ -9,16 +10,20 @@ FPS = 60
 class Player(pygame.sprite.Sprite):
     HORIZONTAL_MOVE = 15
     VERTICAL_MOVE = 5
-    img = 'art/ship.png'
+    img = 'assets/art/ship.png'
 
-    def __init__(self, *groups):
+    def __init__(self, start_position, *groups):
         super().__init__(*groups)
         self.image = pygame.image.load(self.img)
-        self.rect = pygame.rect.Rect((640, 650), self.image.get_size())
-        self.collide = pygame.mixer.Sound('sound/collide_1.wav')
-        self.laser_1 = pygame.mixer.Sound('sound/laser_1.wav')
+        self.rect = pygame.rect.Rect(start_position, self.image.get_size())
+        self.collide = pygame.mixer.Sound('assets/sound/collide_1.wav')
+        self.laser_1 = pygame.mixer.Sound('assets/sound/laser_1.wav')
+        self.burst_effect = pygame.mixer.Sound('assets/sound/burst.wav')
         self.laser_1_cooldown = 0.3
         self.laser_1_cooldown_state = 0
+        self.burst_cooldown = 5
+        self.burst_cooldown_state = 0
+        self.burst_force = 250
         self.dx = 0
         self.dy = 0
 
@@ -39,6 +44,18 @@ class Player(pygame.sprite.Sprite):
             self.laser_1.play()
             self.laser_1_cooldown_state = self.laser_1_cooldown
 
+    def burst(self):
+        """
+        A burst of speed in whatever direction the player is moving.
+        """
+        if self.burst_cooldown_state == 0:
+            self.burst_effect.play()
+            self.burst_cooldown_state = self.burst_cooldown
+            self.dx, self.dy = (
+                (copysign(self.dx + self.burst_force, self.dx)),
+                (copysign(self.dy + self.burst_force, self.dy))
+            )
+
     def update(self, dt, game):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:
@@ -56,8 +73,13 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_LSHIFT]:
             self.shoot()
 
-        self.rect.x += self.dx * dt
-        self.rect.y += self.dy * dt
+        if keys[pygame.K_SPACE]:
+            self.burst()
+
+        self.rect.x, self.rect.y = (
+            (self.rect.x + self.dx * dt),
+            (self.rect.y + self.dy * dt)
+        )
 
         # Bounce off the sides of the screen, and reduce absolute velocity.
         # If the hit is hard enough, play collision sound
@@ -69,7 +91,9 @@ class Player(pygame.sprite.Sprite):
         if self.rect.top < 0 or self.rect.bottom > SCREEN_HEIGHT:
             self.dy = 0
 
+        # Adjust cooldowns
         self.laser_1_cooldown_state = max(self.laser_1_cooldown_state - dt, 0)
+        self.burst_cooldown_state = max(self.burst_cooldown_state - dt, 0)
 
 
 class Star(object):
@@ -117,15 +141,15 @@ class Game(object):
 
         sprites = pygame.sprite.Group()
 
-        self.player = Player(sprites)
-        background = pygame.image.load('art/spacefield.png')
+        self.player = Player((640, 650), sprites)
+        background = pygame.image.load('assets/art/spacefield.png')
         starfield = Starfield(screen)
         show_starfield = True
-        font = pygame.font.Font('fonts/ShareTechMono-Regular.ttf', 16, bold=True)
+        font = pygame.font.Font('assets/fonts/ShareTechMono-Regular.ttf', 16, bold=True)
 
-        background_music = pygame.mixer.Sound('sound/music/DigitalNativeLooped.ogg')
+        background_music = pygame.mixer.Sound('assets/sound/music/DigitalNativeLooped.ogg')
         background_music.set_volume(0.9)
-        background_music.play(loops=-1)
+        background_music.play(loops=-1, fade_ms=2000)
 
         paused = False
 
