@@ -121,18 +121,27 @@ class Game(object):
         show_starfield = True
         font = pygame.font.Font('fonts/ShareTechMono-Regular.ttf', 16, bold=True)
 
+        background_music = pygame.mixer.Sound('sound/music/DigitalNativeLooped.ogg')
+        background_music.set_volume(0.9)
+        background_music.play(loops=-1)
+
         while True:
             dt = clock.tick(FPS)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                    return
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
-                    stats = not stats
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
-                    show_starfield = not show_starfield
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return
+                    if event.key == pygame.K_F1:
+                        stats = not stats
+                    if event.key == pygame.K_F2:
+                        show_starfield = not show_starfield
+                    if event.key == pygame.K_MINUS:
+                        background_music.set_volume(background_music.get_volume() - 0.1)
+                    if event.key == pygame.K_EQUALS:
+                        background_music.set_volume(background_music.get_volume() + 0.1)
 
             screen.blit(background, (0, 0))
             if show_starfield:
