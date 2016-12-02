@@ -59,6 +59,8 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += self.dx * dt
         self.rect.y += self.dy * dt
 
+        # Bounce off the sides of the screen, and reduce absolute velocity.
+        # If the hit is hard enough, play collision sound
         if (self.rect.right > SCREEN_WIDTH and self.dx > 0) or (self.rect.left < 0 and self.dx < 0):
             if abs(self.dx) > 400:
                 self.collide.play()
@@ -125,6 +127,8 @@ class Game(object):
         background_music.set_volume(0.9)
         background_music.play(loops=-1)
 
+        paused = False
+
         while True:
             dt = clock.tick(FPS)
 
@@ -142,6 +146,11 @@ class Game(object):
                         background_music.set_volume(background_music.get_volume() - 0.1)
                     if event.key == pygame.K_EQUALS:
                         background_music.set_volume(background_music.get_volume() + 0.1)
+                    if event.key == pygame.K_p:
+                        paused = not paused
+
+            if paused:
+                continue
 
             screen.blit(background, (0, 0))
             if show_starfield:
