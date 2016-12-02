@@ -2,15 +2,15 @@ from random import randrange, choice
 from math import copysign
 import pygame
 
-SCREEN_HEIGHT = 800
-SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 1000
+SCREEN_WIDTH = 1000
 FPS = 60
 
 
 class Player(pygame.sprite.Sprite):
     HORIZONTAL_MOVE = 15
     VERTICAL_MOVE = 5
-    img = 'assets/art/ship.png'
+    img = 'assets/ssr/PNG/playerShip1_orange.png'
 
     def __init__(self, start_position, *groups):
         super().__init__(*groups)
@@ -141,8 +141,8 @@ class Game(object):
 
         sprites = pygame.sprite.Group()
 
-        self.player = Player((640, 650), sprites)
-        background = pygame.image.load('assets/art/spacefield.png')
+        self.player = Player((SCREEN_WIDTH / 2, 650), sprites)
+        background = pygame.image.load('assets/art/spacefield1600x1000.png')
         starfield = Starfield(screen)
         show_starfield = True
         font = pygame.font.Font('assets/fonts/ShareTechMono-Regular.ttf', 16, bold=True)
