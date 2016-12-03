@@ -31,7 +31,7 @@ class SpreadLaser(Laser):
     def __init__(self, *args, **kwargs):
         self.angle = 0
         super().__init__(*args, **kwargs)
-        self.image = pygame.transform.smoothscale(self.image, (24, 23))
+        self.image = pygame.transform.scale(self.image, (24, 23))
         self.image_master = self.image.copy()
         self.rect = self.image.get_rect(center=self.rect.center)
 
@@ -61,7 +61,7 @@ class Player(pygame.sprite.Sprite):
         self.laser_1_cooldown_state = 0
         self.burst_cooldown = 5
         self.burst_cooldown_state = 0
-        self.q_cooldown = 1
+        self.q_cooldown = 5
         self.q_cooldown_state = 0
         self.burst_force = 250
         self.dx = 0
@@ -167,6 +167,8 @@ class Enemy(pygame.sprite.Sprite):
 
     def update(self, dt):
         self.rect.y += self.dy * dt
+        if self.rect.top > SCREEN_HEIGHT:
+            self.kill()
 
     def destroy(self):
         self.explosion_sound.play()
