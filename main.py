@@ -178,7 +178,7 @@ class Game(object):
     def run(self, screen):
         stats = False
         clock = pygame.time.Clock()
-        player_score = 0
+        player_score = 1000000
         player_powerup = 0
 
         sprites = pygame.sprite.Group()
@@ -266,7 +266,8 @@ class Game(object):
                 player_powerup = 0
 
             # Display
-            score_display = score_font.render(str(player_score), True, (200, 200, 200))
+
+            score_display = score_font.render('{:,}'.format(player_score), True, (200, 200, 200))
             display_width = score_display.get_width()
             display_x = SCREEN_WIDTH - 10 - display_width
             screen.blit(score_display, (display_x, 10))
