@@ -10,11 +10,11 @@ FPS = 60
 class Laser(pygame.sprite.Sprite):
     image_file = 'assets/ssr/PNG/Lasers/laserBlue07.png'
 
-    def __init__(self, start_position, *groups, dy=200, dx=0):
+    def __init__(self, image, start_position, *groups, dy=400, dx=0):
         super().__init__(*groups)
         self.dy = dy
         self.dx = dx
-        self.image = pygame.image.load(self.image_file)
+        self.image = image
         self.rect = self.image.get_rect()
         self.rect.midbottom = start_position
 
@@ -23,6 +23,55 @@ class Laser(pygame.sprite.Sprite):
         self.rect.x += self.dx * dt
         if self.rect.bottom < 0:
             self.kill()
+
+
+class LaserFactory(object):
+    def __init__(self):
+        self.image_master = pygame.image.load('assets/ssr/PNG/Lasers/laserBlue07.png')
+
+    def spawn(self, position, *groups, **kwargs):
+        image = self.image_master.copy()
+        return Laser(image, position, *groups, **kwargs)
+
+
+class LaserHit(pygame.sprite.Sprite):
+    image_file = 'assets/ssr/PNG/Lasers/laserBlue08.png'
+
+    def __init__(self, image, position, *groups):
+        super().__init__(*groups)
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.center = position
+        self.lifespan = 0.15
+        self.original_width = self.rect.width
+        self.original_height = self.rect.height
+        self.width_scale_factor = self.rect.width / self.lifespan
+        self.height_scale_factor = self.rect.height / self.lifespan
+
+    def update(self, dt):
+        self.lifespan -= dt
+        width = max(round(self.width_scale_factor * self.lifespan), 0)
+        height = max(round(self.height_scale_factor * self.lifespan), 0)
+        if not any((width, height)):
+            self.kill()
+            return
+        self.image = pygame.transform.scale(self.image, (width, height))
+        self.rect = self.image.get_rect(center=self.rect.center)
+        if self.lifespan < 0:
+            self.kill()
+
+
+class LaserHitFactory(object):
+    def __init__(self):
+        self.image_master = pygame.image.load('assets/ssr/PNG/Lasers/laserBlue08.png')
+
+    def get_hit(self, position, *groups):
+        # adjust the position up a bit because it looks better
+        position = (position[0], position[1] - 10)
+        # rotate to a random angle
+        angle = randrange(1, 360)
+        image = pygame.transform.rotate(self.image_master, angle)
+        return LaserHit(image, position, *groups)
 
 
 class SpreadLaser(Laser):
@@ -42,6 +91,15 @@ class SpreadLaser(Laser):
         super().update(dt)
 
 
+class SpreadLaserFactory(object):
+    def __init__(self):
+        self.image_master = pygame.image.load('assets/ssr/PNG/Lasers/laserBlue08.png')
+
+    def spawn(self, position, *groups, **kwargs):
+        image = self.image_master.copy()
+        return SpreadLaser(image, position, *groups, **kwargs)
+
+
 class Player(pygame.sprite.Sprite):
     HORIZONTAL_MOVE = 15
     VERTICAL_MOVE = 5
@@ -57,6 +115,8 @@ class Player(pygame.sprite.Sprite):
         self.q_sound = pygame.mixer.Sound('assets/sound/laser_3.wav')
         self.burst_effect = pygame.mixer.Sound('assets/sound/burst.wav')
         self.powerup_sound = pygame.mixer.Sound('assets/sound/powerup_1.wav')
+        self.laser_factory = LaserFactory()
+        self.spread_laser_factory = SpreadLaserFactory()
         self.laser_1_cooldown = 0.3
         self.laser_1_cooldown_state = 0
         self.burst_cooldown = 5
@@ -84,14 +144,14 @@ class Player(pygame.sprite.Sprite):
         if self.laser_1_cooldown_state == 0:
             self.laser_1.play()
             self.laser_1_cooldown_state = self.laser_1_cooldown
-            game.lasers.add(Laser(self.rect.midtop))
+            game.lasers.add(self.laser_factory.spawn(self.rect.midtop))
 
     def q(self, game):
         if self.q_cooldown_state == 0:
             self.q_sound.play()
             self.q_cooldown_state = self.q_cooldown
-            game.lasers.add(SpreadLaser(self.rect.topleft, dy=150, dx=-100))
-            game.lasers.add(SpreadLaser(self.rect.topright, dy=150, dx=100))
+            game.lasers.add(self.spread_laser_factory.spawn(self.rect.topleft, dy=70, dx=-330))
+            game.lasers.add(self.spread_laser_factory.spawn(self.rect.topright, dy=70, dx=330))
 
     def burst(self):
         """
@@ -158,10 +218,10 @@ class Enemy(pygame.sprite.Sprite):
     points = 100
     image_file = 'assets/ssr/PNG/Enemies/enemyBlack3.png'
 
-    def __init__(self, start_position, *groups, dy=50):
+    def __init__(self, image, start_position, *groups, dy=50):
         super().__init__(*groups)
         self.dy = dy
-        self.image = pygame.image.load(self.image_file)
+        self.image = image
         self.rect = pygame.rect.Rect(start_position, self.image.get_size())
         self.explosion_sound = pygame.mixer.Sound('assets/sound/explosion_1.wav')
 
@@ -173,6 +233,22 @@ class Enemy(pygame.sprite.Sprite):
     def destroy(self):
         self.explosion_sound.play()
         self.kill()
+
+
+class EnemyFactory(object):
+    def __init__(self):
+        self.images = {
+            'black': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlack3.png'),
+            'blue': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlue3.png'),
+            'green': pygame.image.load('assets/ssr/PNG/Enemies/enemyGreen3.png'),
+            'red': pygame.image.load('assets/ssr/PNG/Enemies/enemyRed3.png')
+        }
+
+    def get_enemy(self, position, *groups, color=None, **kwargs):
+        if color is None:
+            color = choice(list(self.images.keys()))
+        image = self.images[color].copy()
+        return Enemy(image, position, *groups, **kwargs)
 
 
 class Star(object):
@@ -215,10 +291,12 @@ class Starfield(object):
 
 class Game(object):
     def add_random_enemies(self):
+        color = choice(['black', 'blue', 'green', 'red'])
         for _ in range(randrange(1, 4)):
-            position = (randrange(0, (SCREEN_WIDTH - 90)), -100)
-            speed = randrange(90, 170, 10)
-            Enemy(position, self.enemies, dy=speed)
+            position = (randrange(0, (SCREEN_WIDTH - 90)),
+                        randrange(-200, -100))
+            speed = randrange(120, 200, 10)
+            self.enemy_factory.get_enemy(position, self.enemies, color=color, dy=speed)
 
     def run(self, screen):
         stats = False
@@ -227,6 +305,10 @@ class Game(object):
         player_powerup = 0
 
         sprites = pygame.sprite.Group()
+        effects = pygame.sprite.Group()
+        hit_factory = LaserHitFactory()
+        self.enemy_factory = EnemyFactory()
+
         self.enemies = pygame.sprite.Group()
         self.lasers = pygame.sprite.Group()
 
@@ -287,7 +369,21 @@ class Game(object):
             self.lasers.update(dt)
             sprites.update(dt, self)
             self.enemies.update(dt)
-            self.lasers.update(dt)
+            effects.update(dt)
+
+            # Game Logic
+            hits = pygame.sprite.groupcollide(self.enemies, self.lasers, False, True)
+            for enemy, lasers in hits.items():
+                # Hit effect
+                laser = lasers[0]
+                hit_factory.get_hit(laser.rect.midtop, effects)
+                player_score += enemy.points
+                player_powerup += enemy.points
+                enemy.destroy()
+
+            if player_powerup > 5000:
+                self.player.powerup()
+                player_powerup = 0
 
             # Draw
             screen.blit(background, (0, 0))
@@ -296,17 +392,7 @@ class Game(object):
             self.enemies.draw(screen)
             self.lasers.draw(screen)
             sprites.draw(screen)
-
-            # Game Logic
-            hits = pygame.sprite.groupcollide(self.enemies, self.lasers, False, True)
-            for enemy in hits.keys():
-                player_score += enemy.points
-                player_powerup += enemy.points
-                enemy.destroy()
-
-            if player_powerup > 5000:
-                self.player.powerup()
-                player_powerup = 0
+            effects.draw(screen)
 
             # Display
 
