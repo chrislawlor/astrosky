@@ -25,6 +25,7 @@ class Player(pygame.sprite.Sprite):
     HORIZONTAL_MOVE = 15
     VERTICAL_MOVE = 5
     img = 'assets/ssr/PNG/playerShip1_orange.png'
+    max_level = 10
 
     def __init__(self, start_position, *groups):
         super().__init__(*groups)
@@ -33,6 +34,7 @@ class Player(pygame.sprite.Sprite):
         self.collide = pygame.mixer.Sound('assets/sound/collide_1.wav')
         self.laser_1 = pygame.mixer.Sound('assets/sound/laser_1.wav')
         self.burst_effect = pygame.mixer.Sound('assets/sound/burst.wav')
+        self.powerup_sound = pygame.mixer.Sound('assets/sound/powerup_1.wav')
         self.laser_1_cooldown = 0.3
         self.laser_1_cooldown_state = 0
         self.burst_cooldown = 5
@@ -40,6 +42,7 @@ class Player(pygame.sprite.Sprite):
         self.burst_force = 250
         self.dx = 0
         self.dy = 0
+        self.level = 1
 
     def thrust_left(self, dt):
         self.dx -= self.HORIZONTAL_MOVE
@@ -70,6 +73,11 @@ class Player(pygame.sprite.Sprite):
                 (copysign(self.dx + self.burst_force, self.dx)),
                 (copysign(self.dy + self.burst_force, self.dy))
             )
+
+    def powerup(self):
+        if self.level < self.max_level:
+            self.powerup_sound.play()
+            self.laser_1_cooldown -= 0.01
 
     def update(self, dt, game):
         keys = pygame.key.get_pressed()
@@ -196,7 +204,6 @@ class Game(object):
 
         background_music = pygame.mixer.Sound('assets/sound/music/DigitalNativeLooped.ogg')
         background_music.set_volume(0.9)
-        powerup_sound = pygame.mixer.Sound('assets/sound/powerup_1.wav')
         background_music.play(loops=-1, fade_ms=2000)
 
         paused = False
@@ -261,8 +268,7 @@ class Game(object):
                 enemy.destroy()
 
             if player_powerup > 5000:
-                powerup_sound.play()
-                self.player.laser_1_cooldown = max(0.2, self.player.laser_1_cooldown - 0.012)
+                self.player.powerup()
                 player_powerup = 0
 
             # Display
