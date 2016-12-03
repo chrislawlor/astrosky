@@ -9,7 +9,7 @@ FPS = 60
 
 class SpriteFactory(object):
     """
-    Base class for sprite factories.
+    A simple Sprite factory.
 
     Sprite classes must have an ``image_file`` attribute, and accept
     an image as thier first positional argument. All other arguments
@@ -76,7 +76,7 @@ class LaserHitFactory(object):
     def __init__(self):
         self.image_master = pygame.image.load('assets/ssr/PNG/Lasers/laserBlue08.png')
 
-    def get_hit(self, position, *groups):
+    def spawn(self, position, *groups):
         # adjust the position up a bit because it looks better
         position = (position[0], position[1] - 10)
         # rotate to a random angle
@@ -246,7 +246,7 @@ class EnemyFactory(object):
             'red': pygame.image.load('assets/ssr/PNG/Enemies/enemyRed3.png')
         }
 
-    def get_enemy(self, position, *groups, color=None, **kwargs):
+    def spawn(self, position, *groups, color=None, **kwargs):
         if color is None:
             color = choice(list(self.images.keys()))
         image = self.images[color].copy()
@@ -298,7 +298,7 @@ class Game(object):
             position = (randrange(0, (SCREEN_WIDTH - 90)),
                         randrange(-200, -100))
             speed = randrange(120, 200, 10)
-            self.enemy_factory.get_enemy(position, self.enemies, color=color, dy=speed)
+            self.enemy_factory.spawn(position, self.enemies, color=color, dy=speed)
 
     def run(self, screen):
         stats = False
@@ -378,7 +378,7 @@ class Game(object):
             for enemy, lasers in hits.items():
                 # Hit effect
                 laser = lasers[0]
-                hit_factory.get_hit(laser.rect.midtop, effects)
+                hit_factory.spawn(laser.rect.midtop, effects)
                 player_score += enemy.points
                 player_powerup += enemy.points
                 enemy.destroy()
