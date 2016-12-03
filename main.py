@@ -179,14 +179,14 @@ class Starfield(object):
 class Game(object):
     def add_random_enemies(self):
         for _ in range(randrange(1, 4)):
-            position = (randrange(0, (SCREEN_WIDTH - 70)), -100)
+            position = (randrange(0, (SCREEN_WIDTH - 90)), -100)
             speed = randrange(90, 170, 10)
             Enemy(position, self.enemies, dy=speed)
 
     def run(self, screen):
         stats = False
         clock = pygame.time.Clock()
-        player_score = 1000000
+        player_score = 0
         player_powerup = 0
 
         sprites = pygame.sprite.Group()
