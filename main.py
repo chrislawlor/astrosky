@@ -8,17 +8,38 @@ FPS = 60
 
 
 class Laser(pygame.sprite.Sprite):
-    def __init__(self, start_position, *groups, dy=200):
+    image_file = 'assets/ssr/PNG/Lasers/laserBlue07.png'
+
+    def __init__(self, start_position, *groups, dy=200, dx=0):
         super().__init__(*groups)
         self.dy = dy
-        self.image = pygame.image.load('assets/ssr/PNG/Lasers/laserBlue07.png')
+        self.dx = dx
+        self.image = pygame.image.load(self.image_file)
         self.rect = self.image.get_rect()
         self.rect.midbottom = start_position
 
     def update(self, dt):
         self.rect.y -= self.dy * dt
+        self.rect.x += self.dx * dt
         if self.rect.bottom < 0:
             self.kill()
+
+
+class SpreadLaser(Laser):
+    image_file = 'assets/ssr/PNG/Lasers/laserBlue08.png'
+
+    def __init__(self, *args, **kwargs):
+        self.angle = 0
+        super().__init__(*args, **kwargs)
+        self.image = pygame.transform.smoothscale(self.image, (24, 23))
+        self.image_master = self.image.copy()
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+    def update(self, dt):
+        self.angle += 230 * dt
+        self.image = pygame.transform.rotate(self.image_master, self.angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
+        super().update(dt)
 
 
 class Player(pygame.sprite.Sprite):
@@ -33,12 +54,15 @@ class Player(pygame.sprite.Sprite):
         self.rect = pygame.rect.Rect(start_position, self.image.get_size())
         self.collide = pygame.mixer.Sound('assets/sound/collide_1.wav')
         self.laser_1 = pygame.mixer.Sound('assets/sound/laser_1.wav')
+        self.q_sound = pygame.mixer.Sound('assets/sound/laser_3.wav')
         self.burst_effect = pygame.mixer.Sound('assets/sound/burst.wav')
         self.powerup_sound = pygame.mixer.Sound('assets/sound/powerup_1.wav')
         self.laser_1_cooldown = 0.3
         self.laser_1_cooldown_state = 0
         self.burst_cooldown = 5
         self.burst_cooldown_state = 0
+        self.q_cooldown = 1
+        self.q_cooldown_state = 0
         self.burst_force = 250
         self.dx = 0
         self.dy = 0
@@ -61,6 +85,13 @@ class Player(pygame.sprite.Sprite):
             self.laser_1.play()
             self.laser_1_cooldown_state = self.laser_1_cooldown
             game.lasers.add(Laser(self.rect.midtop))
+
+    def q(self, game):
+        if self.q_cooldown_state == 0:
+            self.q_sound.play()
+            self.q_cooldown_state = self.q_cooldown
+            game.lasers.add(SpreadLaser(self.rect.topleft, dy=150, dx=-100))
+            game.lasers.add(SpreadLaser(self.rect.topright, dy=150, dx=100))
 
     def burst(self):
         """
@@ -99,6 +130,9 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_SPACE]:
             self.burst()
 
+        if keys[pygame.K_q]:
+            self.q(game)
+
         self.rect.x, self.rect.y = (
             (self.rect.x + self.dx * dt),
             (self.rect.y + self.dy * dt)
@@ -117,6 +151,7 @@ class Player(pygame.sprite.Sprite):
         # Adjust cooldowns
         self.laser_1_cooldown_state = max(self.laser_1_cooldown_state - dt, 0)
         self.burst_cooldown_state = max(self.burst_cooldown_state - dt, 0)
+        self.q_cooldown_state = max(self.q_cooldown_state - dt, 0)
 
 
 class Enemy(pygame.sprite.Sprite):
