@@ -7,6 +7,26 @@ SCREEN_WIDTH = 1000
 FPS = 60
 
 
+class SpriteFactory(object):
+    """
+    Base class for sprite factories.
+
+    Sprite classes must have an ``image_file`` attribute, and accept
+    an image as thier first positional argument. All other arguments
+    passed to the factory ``spawn`` method are passed to the sprite
+    class's ``__init__`` method.
+
+    """
+
+    def __init__(self, sprite_class):
+        self.sprite_class = sprite_class
+        self.image_master = pygame.image.load(self.sprite_class.image_file)
+
+    def spawn(self, *args, **kwargs):
+        image = self.image_master.copy()
+        return self.sprite_class(image, *args, **kwargs)
+
+
 class Laser(pygame.sprite.Sprite):
     image_file = 'assets/ssr/PNG/Lasers/laserBlue07.png'
 
@@ -23,15 +43,6 @@ class Laser(pygame.sprite.Sprite):
         self.rect.x += self.dx * dt
         if self.rect.bottom < 0:
             self.kill()
-
-
-class LaserFactory(object):
-    def __init__(self):
-        self.image_master = pygame.image.load('assets/ssr/PNG/Lasers/laserBlue07.png')
-
-    def spawn(self, position, *groups, **kwargs):
-        image = self.image_master.copy()
-        return Laser(image, position, *groups, **kwargs)
 
 
 class LaserHit(pygame.sprite.Sprite):
@@ -91,15 +102,6 @@ class SpreadLaser(Laser):
         super().update(dt)
 
 
-class SpreadLaserFactory(object):
-    def __init__(self):
-        self.image_master = pygame.image.load('assets/ssr/PNG/Lasers/laserBlue08.png')
-
-    def spawn(self, position, *groups, **kwargs):
-        image = self.image_master.copy()
-        return SpreadLaser(image, position, *groups, **kwargs)
-
-
 class Player(pygame.sprite.Sprite):
     HORIZONTAL_MOVE = 15
     VERTICAL_MOVE = 5
@@ -115,8 +117,8 @@ class Player(pygame.sprite.Sprite):
         self.q_sound = pygame.mixer.Sound('assets/sound/laser_3.wav')
         self.burst_effect = pygame.mixer.Sound('assets/sound/burst.wav')
         self.powerup_sound = pygame.mixer.Sound('assets/sound/powerup_1.wav')
-        self.laser_factory = LaserFactory()
-        self.spread_laser_factory = SpreadLaserFactory()
+        self.laser_factory = SpriteFactory(Laser)
+        self.spread_laser_factory = SpriteFactory(SpreadLaser)
         self.laser_1_cooldown = 0.3
         self.laser_1_cooldown_state = 0
         self.burst_cooldown = 5
