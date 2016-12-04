@@ -340,8 +340,8 @@ class Starfield(object):
 
 
 class Background(object):
-    def __init__(self):
-        self.image = load_image('assets/art/spacefield1600x1000.png')
+    def __init__(self, image_path):
+        self.image = load_image(image_path)
         self.rect = pygame.rect.Rect((0, 0), self.image.get_size())
         self.rect.centerx = SCREEN_RECT.centerx
         self.starfield = Starfield(self.rect)
@@ -399,12 +399,17 @@ class ScoreDisplayGroup(object):
 
 
 class Level(object):
-    def __init__(self):
+
+    def __init__(self, **config):
+        background_music = config.get('background_music', 'assets/sound/music/DigitalNativeLooped.ogg')
+        background_image = config.get('background_image', 'assets/art/spacefield1600x1000.png')
+        self.enemy_colors = config.get('enemy_colors', ['blue', 'green'])
+        self.end_score = config.get('end_score', 3000)
         self.player_powerup = 0
         self.sprites = pygame.sprite.Group()
         self.score_display_group = ScoreDisplayGroup()
 
-        self.background = Background()
+        self.background = Background(background_image)
 
         self.effects = pygame.sprite.Group()
         self.enemy_factory = EnemyFactory()
@@ -415,15 +420,21 @@ class Level(object):
 
         self.player = Player((SCREEN_WIDTH / 2, 650), self.sprites)
 
-        self.background_music = pygame.mixer.Sound('assets/sound/music/DigitalNativeLooped.ogg')
+        self.background_music = pygame.mixer.Sound(background_music)
         # background_music = pygame.mixer.Sound('assets/sound/music/techno_gameplay_loop.ogg')
         self.background_music.set_volume(0.9)
         self.background_music.play(loops=-1, fade_ms=2000)
 
         self.enemy_cooldown = 4
-        self.enemy_cooldown_state = 0
+        self.enemy_cooldown_state = 5  # initial time before enemies spawn
         self.enemy_cooldown_timer = 10  # how often we reduce the cooldown
         self.enemy_cooldown_timer_state = 0
+
+        self.score = 0
+
+        self.is_complete = False  # Player won, stop spawning enemies
+        self.is_ended = False  # Signal game loop to load a new level
+        self.end_timer = 1  # seconds between complete and end
 
     def update(self, dt, events):
         points = 0
@@ -455,6 +466,12 @@ class Level(object):
         self.effects.update(dt)
         self.score_display_group.update(dt)
 
+        if self.is_complete:
+            self.end_timer -= dt
+            if self.end_timer < 0:
+                self.is_ended = True
+            return points
+
         # Game Logic
         hits = pygame.sprite.groupcollide(self.enemies, self.lasers, False, True)
         for enemy, lasers in hits.items():
@@ -471,6 +488,10 @@ class Level(object):
             self.player.powerup()
             self.player_powerup = 0
 
+        self.score += points
+        if self.score >= self.end_score:
+            self.is_complete = True
+            self.end()
         return points
 
     def draw(self, screen):
@@ -481,9 +502,15 @@ class Level(object):
         self.effects.draw(screen)
         self.score_display_group.draw(screen)
 
+    def end(self):
+        self.enemies.empty()
+        self.background_music.fadeout(self.end_timer * 1000)
+
     def add_random_enemies(self):
-        color = choice(['black', 'blue', 'green'])
-        speed = randrange(120, 200, 10)
+        if self.is_complete:
+            return
+        color = choice(self.enemy_colors)
+        speed = randrange(180, 220, 10)
         for _ in range(randrange(1, 3)):
             position = (randrange(0, (SCREEN_WIDTH - 90)),
                         randrange(-200, -100))
@@ -492,10 +519,38 @@ class Level(object):
             position = (randrange(0, (SCREEN_WIDTH - 90)),
                         randrange(-200, -100))
             self.bigger_enemy_factory.spawn(position, self.enemies, color=color,
-                dy=speed - 20)
+                dy=speed - 60)
 
 
 class Game(object):
+    def load_levels(self):
+        # Right now this is hard-coded, but it could be loaded from a
+        # config file
+        configs = [
+            {
+                'background_music': 'assets/sound/music/DigitalNativeLooped.ogg',
+                'background_image': 'assets/art/spacefield1600x1000.png',
+                'enemy_colors': ['green'],
+                'end_score': 2000,
+            },
+            {
+                'background_music': 'assets/sound/music/techno_gameplay_loop.ogg',
+                'background_image': 'assets/art/spacefield1600x1000.png',
+                'enemy_colors': ['green', 'blue'],
+                'end_score': 3000,
+            },
+            {
+                'background_music': 'assets/sound/music/techno_gameplay_loop.ogg',
+                'background_image': 'assets/art/spacefield1600x1000.png',
+                'enemy_colors': ['blue', 'black'],
+                'end_score': 3000,
+            },
+        ]
+        for config in configs:
+            yield Level(**config)
+        # Keep playing the last level
+        yield Level(**configs[-1])
+
     def run(self, screen):
         stats = False
         clock = pygame.time.Clock()
@@ -505,7 +560,9 @@ class Game(object):
 
         player_score = 0
 
-        level = Level()
+        levels = self.load_levels()
+
+        level = next(levels)
 
         while True:
             dt = clock.tick(FPS) / 1000.
@@ -525,7 +582,11 @@ class Game(object):
                 continue
 
             points = level.update(dt, events)
-            player_score += points
+            if points:
+                player_score += points
+            if level.is_ended:
+                level = next(levels)
+
             level.draw(screen)
 
             # Display
@@ -537,8 +598,8 @@ class Game(object):
             if stats:
                 lines = [
                     "FPS {:.0f}".format(clock.get_fps()),
-                    "Player dx={:+} dy={:+}".format(self.player.dx, self.player.dy),
-                    "Laser Atk Speed {:.3f}".format(self.player.laser_1_cooldown),
+                    "Player dx={:+} dy={:+}".format(level.player.dx, level.player.dy),
+                    "Laser Atk Speed {:.3f}".format(level.player.laser_1_cooldown),
                     "Wave Spawn Interval {:.3f}".format(level.enemy_cooldown),
                 ]
                 pixel_offset = 10
