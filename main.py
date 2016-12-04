@@ -1,3 +1,4 @@
+import os
 from random import randrange, choice
 from math import copysign
 import pygame
@@ -5,6 +6,17 @@ import pygame
 SCREEN_HEIGHT = 1000
 SCREEN_WIDTH = 1000
 FPS = 60
+
+
+_image_cache = {}
+
+
+def load_image(path):
+    if path not in _image_cache:
+        local_path = os.path.join(*path.split("/"))
+        image = pygame.image.load(local_path).convert_alpha()
+        _image_cache[path] = image
+    return _image_cache[path].copy()
 
 
 class SpriteFactory(object):
@@ -20,7 +32,7 @@ class SpriteFactory(object):
 
     def __init__(self, sprite_class):
         self.sprite_class = sprite_class
-        self.image_master = pygame.image.load(self.sprite_class.image_file)
+        self.image_master = load_image(self.sprite_class.image_file)
 
     def spawn(self, *args, **kwargs):
         image = self.image_master.copy()
@@ -74,7 +86,7 @@ class LaserHit(pygame.sprite.Sprite):
 
 class LaserHitFactory(object):
     def __init__(self):
-        self.image_master = pygame.image.load('assets/ssr/PNG/Lasers/laserBlue08.png')
+        self.image_master = load_image('assets/ssr/PNG/Lasers/laserBlue08.png')
 
     def spawn(self, position, *groups):
         # adjust the position up a bit because it looks better
@@ -110,7 +122,7 @@ class Player(pygame.sprite.Sprite):
 
     def __init__(self, start_position, *groups):
         super().__init__(*groups)
-        self.image = pygame.image.load(self.img)
+        self.image = load_image(self.img)
         self.rect = pygame.rect.Rect(start_position, self.image.get_size())
         self.collide = pygame.mixer.Sound('assets/sound/collide_1.wav')
         self.laser_1 = pygame.mixer.Sound('assets/sound/laser_1.wav')
@@ -264,9 +276,9 @@ class EnemyFactory(object):
         sf = 0.8
         scale = (int(103 * sf), int(84 * sf))
         self.images = {
-            'black': pygame.transform.scale(pygame.image.load('assets/ssr/PNG/Enemies/enemyBlack3.png'), scale),
-            'blue': pygame.transform.scale(pygame.image.load('assets/ssr/PNG/Enemies/enemyBlue3.png'), scale),
-            'green': pygame.transform.scale(pygame.image.load('assets/ssr/PNG/Enemies/enemyGreen3.png'), scale),
+            'black': pygame.transform.scale(load_image('assets/ssr/PNG/Enemies/enemyBlack3.png'), scale),
+            'blue': pygame.transform.scale(load_image('assets/ssr/PNG/Enemies/enemyBlue3.png'), scale),
+            'green': pygame.transform.scale(load_image('assets/ssr/PNG/Enemies/enemyGreen3.png'), scale),
         }
 
     def spawn(self, position, *groups, color=None, **kwargs):
@@ -279,9 +291,9 @@ class EnemyFactory(object):
 class BiggerEnemyFactory(object):
     def __init__(self):
         self.images = {
-            'black': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlack4.png'),
-            'blue': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlue4.png'),
-            'green': pygame.image.load('assets/ssr/PNG/Enemies/enemyGreen4.png'),
+            'black': load_image('assets/ssr/PNG/Enemies/enemyBlack4.png'),
+            'blue': load_image('assets/ssr/PNG/Enemies/enemyBlue4.png'),
+            'green': load_image('assets/ssr/PNG/Enemies/enemyGreen4.png'),
         }
 
     def spawn(self, position, *groups, color=None, **kwargs):
@@ -393,7 +405,7 @@ class Game(object):
 
         self.player = Player((SCREEN_WIDTH / 2, 650), sprites)
 
-        background = pygame.image.load('assets/art/spacefield1600x1000.png')
+        background = load_image('assets/art/spacefield1600x1000.png')
         starfield = Starfield(screen)
         show_starfield = False
 
