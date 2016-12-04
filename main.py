@@ -261,10 +261,12 @@ class BiggerEnemy(Enemy):
 
 class EnemyFactory(object):
     def __init__(self):
+        sf = 0.8
+        scale = (int(103 * sf), int(84 * sf))
         self.images = {
-            'black': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlack3.png'),
-            'blue': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlue3.png'),
-            'green': pygame.image.load('assets/ssr/PNG/Enemies/enemyGreen3.png'),
+            'black': pygame.transform.scale(pygame.image.load('assets/ssr/PNG/Enemies/enemyBlack3.png'), scale),
+            'blue': pygame.transform.scale(pygame.image.load('assets/ssr/PNG/Enemies/enemyBlue3.png'), scale),
+            'green': pygame.transform.scale(pygame.image.load('assets/ssr/PNG/Enemies/enemyGreen3.png'), scale),
         }
 
     def spawn(self, position, *groups, color=None, **kwargs):
