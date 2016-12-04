@@ -398,7 +398,87 @@ class ScoreDisplayGroup(object):
             score.draw(self.font, screen)
 
 
-class Game(object):
+class Level(object):
+    def __init__(self):
+        self.player_score = 0
+        self.player_powerup = 0
+        self.sprites = pygame.sprite.Group()
+        self.score_display_group = ScoreDisplayGroup()
+
+        self.background = Background()
+
+        self.effects = pygame.sprite.Group()
+        self.enemy_factory = EnemyFactory()
+        self.bigger_enemy_factory = BiggerEnemyFactory()
+
+        self.enemies = pygame.sprite.Group()
+        self.lasers = pygame.sprite.Group()
+
+        self.player = Player((SCREEN_WIDTH / 2, 650), self.sprites)
+
+        self.background_music = pygame.mixer.Sound('assets/sound/music/DigitalNativeLooped.ogg')
+        # background_music = pygame.mixer.Sound('assets/sound/music/techno_gameplay_loop.ogg')
+        self.background_music.set_volume(0.9)
+        self.background_music.play(loops=-1, fade_ms=2000)
+
+        self.enemy_cooldown = 4
+        self.enemy_cooldown_state = 0
+        self.enemy_cooldown_timer = 10  # how often we reduce the cooldown
+        self.enemy_cooldown_timer_state = 0
+
+    def update(self, dt, events):
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F2:
+                    self.background.toggle_starfield()
+                if event.key == pygame.K_MINUS:
+                    self.background_music.set_volume(self.background_music.get_volume() - 0.1)
+                if event.key == pygame.K_EQUALS:
+                    self.background_music.set_volume(self.background_music.get_volume() + 0.1)
+
+        # Spawn Enemies
+        if self.enemy_cooldown_state <= 0:
+            self.add_random_enemies()
+            self.enemy_cooldown_state = self.enemy_cooldown
+        if self.enemy_cooldown_timer_state <= 0:
+            self.enemy_cooldown_timer_state = self.enemy_cooldown_timer
+            # progressively faster spawn times
+            self.enemy_cooldown = max(self.enemy_cooldown - 0.2, 0.6)
+        self.enemy_cooldown_state -= dt
+        self.enemy_cooldown_timer_state -= dt
+
+        # Sprite Updates
+        self.background.update(dt, self.player)
+        self.lasers.update(dt)
+        self.sprites.update(dt, self)
+        self.enemies.update(dt)
+        self.effects.update(dt)
+        self.score_display_group.update(dt)
+
+        # Game Logic
+        hits = pygame.sprite.groupcollide(self.enemies, self.lasers, False, True)
+        for enemy, lasers in hits.items():
+            # Hit effect
+            laser = lasers[0]
+            LaserHit(laser.rect.midtop, self.effects)
+            is_destroyed = enemy.hit()
+            if is_destroyed:
+                self.player_score += enemy.points
+                self.player_powerup += enemy.points
+                self.score_display_group.add(str(enemy.points), enemy.rect.midleft)
+
+        if self.player_powerup > 5000:
+            self.player.powerup()
+            self.player_powerup = 0
+
+    def draw(self, screen):
+        self.background.draw(screen)
+        self.enemies.draw(screen)
+        self.lasers.draw(screen)
+        self.sprites.draw(screen)
+        self.effects.draw(screen)
+        self.score_display_group.draw(screen)
+
     def add_random_enemies(self):
         color = choice(['black', 'blue', 'green'])
         speed = randrange(120, 200, 10)
@@ -412,44 +492,21 @@ class Game(object):
             self.bigger_enemy_factory.spawn(position, self.enemies, color=color,
                 dy=speed - 20)
 
+
+class Game(object):
     def run(self, screen):
         stats = False
         clock = pygame.time.Clock()
-        player_score = 0
-        player_powerup = 0
-
-        sprites = pygame.sprite.Group()
-
-        self.background = Background()
-
-        effects = pygame.sprite.Group()
-        self.enemy_factory = EnemyFactory()
-        self.bigger_enemy_factory = BiggerEnemyFactory()
-
-        self.enemies = pygame.sprite.Group()
-        self.lasers = pygame.sprite.Group()
-        score_display_group = ScoreDisplayGroup()
-
-        self.player = Player((SCREEN_WIDTH / 2, 650), sprites)
-
         font = pygame.font.Font('assets/fonts/ShareTechMono-Regular.ttf', 16, bold=True)
         score_font = pygame.font.Font('assets/ssr/Bonus/kenvector_future.ttf', 25)
-
-        background_music = pygame.mixer.Sound('assets/sound/music/DigitalNativeLooped.ogg')
-        # background_music = pygame.mixer.Sound('assets/sound/music/techno_gameplay_loop.ogg')
-        background_music.set_volume(0.9)
-        background_music.play(loops=-1, fade_ms=2000)
-
         paused = False
-        enemy_cooldown = 4
-        enemy_cooldown_state = 0
-        enemy_cooldown_timer = 10  # how often we reduce the cooldown
-        enemy_cooldown_timer_state = 0
+
+        level = Level()
 
         while True:
             dt = clock.tick(FPS) / 1000.
-
-            for event in pygame.event.get():
+            events = pygame.event.get()
+            for event in events:
                 if event.type == pygame.QUIT:
                     return
                 if event.type == pygame.KEYDOWN:
@@ -457,64 +514,17 @@ class Game(object):
                         return
                     if event.key == pygame.K_F1:
                         stats = not stats
-                    if event.key == pygame.K_F2:
-                        self.background.toggle_starfield()
-                    if event.key == pygame.K_MINUS:
-                        background_music.set_volume(background_music.get_volume() - 0.1)
-                    if event.key == pygame.K_EQUALS:
-                        background_music.set_volume(background_music.get_volume() + 0.1)
                     if event.key == pygame.K_p:
                         paused = not paused
 
             if paused:
                 continue
 
-            # Spawn Enemies
-            if enemy_cooldown_state <= 0:
-                self.add_random_enemies()
-                enemy_cooldown_state = enemy_cooldown
-            if enemy_cooldown_timer_state <= 0:
-                enemy_cooldown_timer_state = enemy_cooldown_timer
-                # progressively faster spawn times
-                enemy_cooldown = max(enemy_cooldown - 0.2, 0.6)
-            enemy_cooldown_state -= dt
-            enemy_cooldown_timer_state -= dt
-
-            # Sprite Updates
-            self.background.update(dt, self.player)
-            self.lasers.update(dt)
-            sprites.update(dt, self)
-            self.enemies.update(dt)
-            effects.update(dt)
-            score_display_group.update(dt)
-
-            # Game Logic
-            hits = pygame.sprite.groupcollide(self.enemies, self.lasers, False, True)
-            for enemy, lasers in hits.items():
-                # Hit effect
-                laser = lasers[0]
-                LaserHit(laser.rect.midtop, effects)
-                is_destroyed = enemy.hit()
-                if is_destroyed:
-                    player_score += enemy.points
-                    player_powerup += enemy.points
-                    score_display_group.add(str(enemy.points), enemy.rect.midleft)
-
-            if player_powerup > 5000:
-                self.player.powerup()
-                player_powerup = 0
-
-            # Draw
-            self.background.draw(screen)
-            self.enemies.draw(screen)
-            self.lasers.draw(screen)
-            sprites.draw(screen)
-            effects.draw(screen)
-            score_display_group.draw(screen)
+            level.update(dt, events)
+            level.draw(screen)
 
             # Display
-
-            score_display = score_font.render('{:,}'.format(player_score), True, (200, 200, 200))
+            score_display = score_font.render('{:,}'.format(level.player_score), True, (200, 200, 200))
             display_width = score_display.get_width()
             display_x = SCREEN_WIDTH - 10 - display_width
             screen.blit(score_display, (display_x, 10))
@@ -524,7 +534,7 @@ class Game(object):
                     "FPS {:.0f}".format(clock.get_fps()),
                     "Player dx={:+} dy={:+}".format(self.player.dx, self.player.dy),
                     "Laser Atk Speed {:.3f}".format(self.player.laser_1_cooldown),
-                    "Wave Spawn Interval {:.3f}".format(enemy_cooldown),
+                    "Wave Spawn Interval {:.3f}".format(level.enemy_cooldown),
                 ]
                 pixel_offset = 10
                 for line in lines:
