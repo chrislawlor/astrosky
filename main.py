@@ -385,7 +385,7 @@ class Game(object):
 
         background = load_image('assets/art/spacefield1600x1000.png')
         starfield = Starfield(screen)
-        show_starfield = False
+        show_starfield = True
 
         font = pygame.font.Font('assets/fonts/ShareTechMono-Regular.ttf', 16, bold=True)
         score_font = pygame.font.Font('assets/ssr/Bonus/kenvector_future.ttf', 25)
