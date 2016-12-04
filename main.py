@@ -400,7 +400,6 @@ class ScoreDisplayGroup(object):
 
 class Level(object):
     def __init__(self):
-        self.player_score = 0
         self.player_powerup = 0
         self.sprites = pygame.sprite.Group()
         self.score_display_group = ScoreDisplayGroup()
@@ -427,6 +426,7 @@ class Level(object):
         self.enemy_cooldown_timer_state = 0
 
     def update(self, dt, events):
+        points = 0
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F2:
@@ -463,13 +463,15 @@ class Level(object):
             LaserHit(laser.rect.midtop, self.effects)
             is_destroyed = enemy.hit()
             if is_destroyed:
-                self.player_score += enemy.points
+                points += enemy.points
                 self.player_powerup += enemy.points
                 self.score_display_group.add(str(enemy.points), enemy.rect.midleft)
 
         if self.player_powerup > 5000:
             self.player.powerup()
             self.player_powerup = 0
+
+        return points
 
     def draw(self, screen):
         self.background.draw(screen)
@@ -501,6 +503,8 @@ class Game(object):
         score_font = pygame.font.Font('assets/ssr/Bonus/kenvector_future.ttf', 25)
         paused = False
 
+        player_score = 0
+
         level = Level()
 
         while True:
@@ -520,11 +524,12 @@ class Game(object):
             if paused:
                 continue
 
-            level.update(dt, events)
+            points = level.update(dt, events)
+            player_score += points
             level.draw(screen)
 
             # Display
-            score_display = score_font.render('{:,}'.format(level.player_score), True, (200, 200, 200))
+            score_display = score_font.render('{:,}'.format(player_score), True, (200, 200, 200))
             display_width = score_display.get_width()
             display_x = SCREEN_WIDTH - 10 - display_width
             screen.blit(score_display, (display_x, 10))
