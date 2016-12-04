@@ -119,7 +119,7 @@ class Player(pygame.sprite.Sprite):
         self.powerup_sound = pygame.mixer.Sound('assets/sound/powerup_1.wav')
         self.laser_factory = SpriteFactory(Laser)
         self.spread_laser_factory = SpriteFactory(SpreadLaser)
-        self.laser_1_cooldown = 0.3
+        self.laser_1_cooldown = 0.2
         self.laser_1_cooldown_state = 0
         self.burst_cooldown = 5
         self.burst_cooldown_state = 0
@@ -128,7 +128,7 @@ class Player(pygame.sprite.Sprite):
         self.burst_force = 250
         self.dx = 0
         self.dy = 0
-        self.level = 1
+        self.level = 4
 
     def thrust_left(self, dt):
         self.dx -= self.HORIZONTAL_MOVE
@@ -143,10 +143,15 @@ class Player(pygame.sprite.Sprite):
         self.dy += self.VERTICAL_MOVE
 
     def shoot(self, game):
-        if self.laser_1_cooldown_state == 0:
-            self.laser_1.play()
-            self.laser_1_cooldown_state = self.laser_1_cooldown
+        if self.laser_1_cooldown_state > 0:
+            return
+        self.laser_1.play()
+        self.laser_1_cooldown_state = self.laser_1_cooldown
+        if self.level < 4:
             game.lasers.add(self.laser_factory.spawn(self.rect.midtop))
+        else:
+            game.lasers.add(self.laser_factory.spawn(self.rect.midleft))
+            game.lasers.add(self.laser_factory.spawn(self.rect.midright))
 
     def q(self, game):
         if self.q_cooldown_state == 0:
@@ -227,15 +232,31 @@ class Enemy(pygame.sprite.Sprite):
         self.image = image
         self.rect = pygame.rect.Rect(start_position, self.image.get_size())
         self.explosion_sound = pygame.mixer.Sound('assets/sound/explosion_1.wav')
+        self.hp = 1
 
     def update(self, dt):
         self.rect.y += self.dy * dt
         if self.rect.top > SCREEN_HEIGHT:
             self.kill()
 
+    def hit(self):
+        self.hp -= 1
+        if self.hp == 0:
+            self.destroy()
+            return True
+        return False
+
     def destroy(self):
         self.explosion_sound.play()
         self.kill()
+
+
+class BiggerEnemy(Enemy):
+    points = 200
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hp = 2
 
 
 class EnemyFactory(object):
@@ -244,7 +265,6 @@ class EnemyFactory(object):
             'black': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlack3.png'),
             'blue': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlue3.png'),
             'green': pygame.image.load('assets/ssr/PNG/Enemies/enemyGreen3.png'),
-            'red': pygame.image.load('assets/ssr/PNG/Enemies/enemyRed3.png')
         }
 
     def spawn(self, position, *groups, color=None, **kwargs):
@@ -252,6 +272,21 @@ class EnemyFactory(object):
             color = choice(list(self.images.keys()))
         image = self.images[color].copy()
         return Enemy(image, position, *groups, **kwargs)
+
+
+class BiggerEnemyFactory(object):
+    def __init__(self):
+        self.images = {
+            'black': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlack4.png'),
+            'blue': pygame.image.load('assets/ssr/PNG/Enemies/enemyBlue4.png'),
+            'green': pygame.image.load('assets/ssr/PNG/Enemies/enemyGreen4.png'),
+        }
+
+    def spawn(self, position, *groups, color=None, **kwargs):
+        if color is None:
+            color = choice(list(self.images.keys()))
+        image = self.images[color].copy()
+        return BiggerEnemy(image, position, *groups, **kwargs)
 
 
 class Star(object):
@@ -294,12 +329,15 @@ class Starfield(object):
 
 class Game(object):
     def add_random_enemies(self):
-        color = choice(['black', 'blue', 'green', 'red'])
+        color = choice(['black', 'blue', 'green'])
         speed = randrange(120, 200, 10)
-        for _ in range(randrange(1, 4)):
+        for _ in range(randrange(0, 3)):
             position = (randrange(0, (SCREEN_WIDTH - 90)),
                         randrange(-200, -100))
             self.enemy_factory.spawn(position, self.enemies, color=color, dy=speed)
+        position = (randrange(0, (SCREEN_WIDTH - 90)),
+                    randrange(-200, -100))
+        self.bigger_enemy_factory.spawn(position, self.enemies, color=color, dy=speed)
 
     def run(self, screen):
         stats = False
@@ -311,6 +349,7 @@ class Game(object):
         effects = pygame.sprite.Group()
         hit_factory = LaserHitFactory()
         self.enemy_factory = EnemyFactory()
+        self.bigger_enemy_factory = BiggerEnemyFactory()
 
         self.enemies = pygame.sprite.Group()
         self.lasers = pygame.sprite.Group()
@@ -325,6 +364,7 @@ class Game(object):
         score_font = pygame.font.Font('assets/ssr/Bonus/kenvector_future.ttf', 20)
 
         background_music = pygame.mixer.Sound('assets/sound/music/DigitalNativeLooped.ogg')
+        # background_music = pygame.mixer.Sound('assets/sound/music/techno_gameplay_loop.ogg')
         background_music.set_volume(0.9)
         background_music.play(loops=-1, fade_ms=2000)
 
@@ -380,9 +420,10 @@ class Game(object):
                 # Hit effect
                 laser = lasers[0]
                 hit_factory.spawn(laser.rect.midtop, effects)
-                player_score += enemy.points
-                player_powerup += enemy.points
-                enemy.destroy()
+                is_destroyed = enemy.hit()
+                if is_destroyed:
+                    player_score += enemy.points
+                    player_powerup += enemy.points
 
             if player_powerup > 5000:
                 self.player.powerup()
