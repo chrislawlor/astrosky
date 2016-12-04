@@ -299,7 +299,7 @@ class Star(object):
 
     def _randomize(self):
         self.x = randrange(0, self.screen.get_width())
-        self.dx, self.size, self.color = choice([
+        self.dy, self.size, self.color = choice([
             (4, 1, (100, 100, 100)),
             (6, 1, (120, 120, 120)),
             (8, 1, (180, 180, 180))
@@ -309,7 +309,7 @@ class Star(object):
         self.screen.fill(self.color, (self.x, self.y, self.size, self.size))
 
     def update(self, dt):
-        self.y += self.dx * dt
+        self.y += self.dy * dt
         if self.y >= self.screen.get_height():
             self.y = 0
             self._randomize()
