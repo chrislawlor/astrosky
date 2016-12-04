@@ -169,6 +169,7 @@ class Player(pygame.sprite.Sprite):
 
     def powerup(self):
         if self.level < self.max_level:
+            self.level += 1
             self.powerup_sound.play()
             self.laser_1_cooldown -= 0.01
 
@@ -294,10 +295,10 @@ class Starfield(object):
 class Game(object):
     def add_random_enemies(self):
         color = choice(['black', 'blue', 'green', 'red'])
+        speed = randrange(120, 200, 10)
         for _ in range(randrange(1, 4)):
             position = (randrange(0, (SCREEN_WIDTH - 90)),
                         randrange(-200, -100))
-            speed = randrange(120, 200, 10)
             self.enemy_factory.spawn(position, self.enemies, color=color, dy=speed)
 
     def run(self, screen):
