@@ -103,6 +103,18 @@ class Player(pygame.sprite.Sprite):
     img = 'assets/ssr/PNG/playerShip1_orange.png'
     max_level = 10
 
+    level_changes = {
+        2: {'laser_1_cooldown': 0.19},
+        3: {'laser_1_cooldown': 0.18},
+        4: {'laser_1_cooldown': 0.17},
+        5: {'laser_1_cooldown': 0.16},
+        6: {'laser_1_cooldown': 0.15},
+        7: {'laser_1_cooldown': 0.14},
+        8: {'laser_1_cooldown': 0.13},
+        9: {'laser_1_cooldown': 0.12},
+        10: {'laser_1_cooldown': 0.11},
+    }
+
     def __init__(self, start_position, *groups):
         super().__init__(*groups)
         self.image = load_image(self.img)
@@ -140,7 +152,7 @@ class Player(pygame.sprite.Sprite):
             return
         self.laser_1.play()
         self.laser_1_cooldown_state = self.laser_1_cooldown
-        if self.level < 4:
+        if self.level < 6:
             game.lasers.add(Laser(self.rect.midtop))
         else:
             game.lasers.add(Laser(self.rect.midleft))
@@ -169,7 +181,11 @@ class Player(pygame.sprite.Sprite):
         if self.level < self.max_level:
             self.level += 1
             self.powerup_sound.play()
-            self.laser_1_cooldown -= 0.01
+            if self.level not in self.level_changes:
+                return
+            changes = self.level_changes[self.level]
+            for attr, value in changes.items():
+                setattr(self, attr, value)
 
     def update(self, dt, game):
         keys = pygame.key.get_pressed()
@@ -244,11 +260,11 @@ class Enemy(pygame.sprite.Sprite):
 
 
 class BiggerEnemy(Enemy):
-    points = 200
+    points = 300
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.hp = 2
+        self.hp = 5
 
 
 class EnemyFactory(object):
@@ -325,7 +341,6 @@ class Starfield(object):
 
 class Background(object):
     def __init__(self):
-        # super().__init__(*groups)
         self.image = load_image('assets/art/spacefield1600x1000.png')
         self.rect = pygame.rect.Rect((0, 0), self.image.get_size())
         self.rect.centerx = SCREEN_RECT.centerx
@@ -387,13 +402,15 @@ class Game(object):
     def add_random_enemies(self):
         color = choice(['black', 'blue', 'green'])
         speed = randrange(120, 200, 10)
-        for _ in range(randrange(0, 3)):
+        for _ in range(randrange(1, 3)):
             position = (randrange(0, (SCREEN_WIDTH - 90)),
                         randrange(-200, -100))
             self.enemy_factory.spawn(position, self.enemies, color=color, dy=speed)
-        position = (randrange(0, (SCREEN_WIDTH - 90)),
-                    randrange(-200, -100))
-        self.bigger_enemy_factory.spawn(position, self.enemies, color=color, dy=speed)
+        if choice([True, False, False]):
+            position = (randrange(0, (SCREEN_WIDTH - 90)),
+                        randrange(-200, -100))
+            self.bigger_enemy_factory.spawn(position, self.enemies, color=color,
+                dy=speed - 20)
 
     def run(self, screen):
         stats = False
