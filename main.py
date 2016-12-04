@@ -329,6 +329,40 @@ class Starfield(object):
             star.draw()
 
 
+class ScoreDisplay(object):
+    def __init__(self, text, position, ttl=0.7):
+        self.text, self.position, self.ttl = text, position, ttl
+        self.color = (200, 200, 200)
+
+    def draw(self, font, screen):
+        surface = font.render(self.text, True, self.color)
+        surface.set_alpha(150)
+        screen.blit(surface, self.position)
+
+
+class ScoreDisplayGroup(object):
+    def __init__(self):
+        self.font = pygame.font.Font('assets/ssr/Bonus/kenvector_future.ttf', 20)
+        self.scores = []
+
+    def add(self, text, position):
+        self.scores.append(ScoreDisplay(text, position))
+
+    def update(self, dt):
+        # this is kinda ugly, but we update the ttl and remove dead scores
+        # all in one shot.
+        new_scores = []
+        for score in self.scores:
+            score.ttl -= dt
+            if score.ttl > 0:
+                new_scores.append(score)
+        self.scores = new_scores
+
+    def draw(self, screen):
+        for score in self.scores:
+            score.draw(self.font, screen)
+
+
 class Game(object):
     def add_random_enemies(self):
         color = choice(['black', 'blue', 'green'])
@@ -355,15 +389,16 @@ class Game(object):
 
         self.enemies = pygame.sprite.Group()
         self.lasers = pygame.sprite.Group()
+        score_display_group = ScoreDisplayGroup()
 
         self.player = Player((SCREEN_WIDTH / 2, 650), sprites)
 
         background = pygame.image.load('assets/art/spacefield1600x1000.png')
         starfield = Starfield(screen)
-        show_starfield = True
+        show_starfield = False
 
         font = pygame.font.Font('assets/fonts/ShareTechMono-Regular.ttf', 16, bold=True)
-        score_font = pygame.font.Font('assets/ssr/Bonus/kenvector_future.ttf', 20)
+        score_font = pygame.font.Font('assets/ssr/Bonus/kenvector_future.ttf', 25)
 
         background_music = pygame.mixer.Sound('assets/sound/music/DigitalNativeLooped.ogg')
         # background_music = pygame.mixer.Sound('assets/sound/music/techno_gameplay_loop.ogg')
@@ -415,6 +450,7 @@ class Game(object):
             sprites.update(dt, self)
             self.enemies.update(dt)
             effects.update(dt)
+            score_display_group.update(dt)
 
             # Game Logic
             hits = pygame.sprite.groupcollide(self.enemies, self.lasers, False, True)
@@ -426,6 +462,7 @@ class Game(object):
                 if is_destroyed:
                     player_score += enemy.points
                     player_powerup += enemy.points
+                    score_display_group.add(str(enemy.points), enemy.rect.midleft)
 
             if player_powerup > 5000:
                 self.player.powerup()
@@ -439,6 +476,7 @@ class Game(object):
             self.lasers.draw(screen)
             sprites.draw(screen)
             effects.draw(screen)
+            score_display_group.draw(screen)
 
             # Display
 
