@@ -284,60 +284,69 @@ class BiggerEnemyFactory(object):
 
 
 class Star(object):
-    def __init__(self, screen):
-        self.screen = screen
-        self.y = randrange(0, screen.get_height() - 1)
+    def __init__(self, bounds):
+        self.bounds = bounds
+        self.y = randrange(self.bounds.top, self.bounds.bottom - 1)
         self._randomize()
 
     def _randomize(self):
-        self.x = randrange(0, self.screen.get_width())
+        self.x = randrange(self.bounds.left, self.bounds.right)
         self.dy, self.size, self.color = choice([
             (4, 1, (100, 100, 100)),
             (6, 1, (120, 120, 120)),
             (8, 1, (180, 180, 180))
         ])
 
-    def draw(self):
-        self.screen.fill(self.color, (self.x, self.y, self.size, self.size))
+    def draw(self, screen):
+        screen.fill(self.color, (self.x, self.y, self.size, self.size))
 
     def update(self, dt):
         self.y += self.dy * dt
-        if self.y >= self.screen.get_height():
-            self.y = 0
+        if self.y >= self.bounds.bottom:
+            self.y = self.bounds.top
             self._randomize()
 
 
 class Starfield(object):
-    def __init__(self, screen, max_stars=300):
+    def __init__(self, bounding_rect, max_stars=300):
         self.stars = []
-        self.screen = screen
         for _ in range(max_stars):
-            star = Star(self.screen)
+            star = Star(bounding_rect)
             self.stars.append(star)
 
     def update(self, dt):
         for star in self.stars:
             star.update(dt)
-            star.draw()
+
+    def draw(self, screen):
+        for star in self.stars:
+            star.draw(screen)
 
 
-class Background(pygame.sprite.Sprite):
-    def __init__(self, *groups):
-        super().__init__(*groups)
+class Background(object):
+    def __init__(self):
+        # super().__init__(*groups)
         self.image = load_image('assets/art/spacefield1600x1000.png')
-        # image_width = self.image.get_width()
-        # x = -(SCREEN_WIDTH / 2)
         self.rect = pygame.rect.Rect((0, 0), self.image.get_size())
+        self.rect.centerx = SCREEN_RECT.centerx
+        self.starfield = Starfield(self.rect)
+        self.show_starfield = True
 
-    def update(self, player, screen):
-        # if player is all the way to the left, image should be all the way
-        # to the right
+    def update(self, dt, player):
         player_offset = SCREEN_RECT.centerx - player.rect.centerx
-        self.rect.centerx = SCREEN_RECT.centerx + (player_offset * 0.05)
+        self.rect.centerx = SCREEN_RECT.centerx + (player_offset * 0.03)
+        if self.show_starfield:
+            self.starfield.update(dt)
 
-        # self.rect.centerx = screen_midtop - player_x
-        # player_offset = screen.rect.midtop - player.rect.x
-        # self.rect.midtop = screen.rect.midtop - player_offset
+    def draw(self, screen):
+        surface = pygame.Surface(self.rect.size)
+        surface.blit(self.image, (0, 0))
+        if self.show_starfield:
+            self.starfield.draw(surface)
+        screen.blit(surface, self.rect)
+
+    def toggle_starfield(self):
+        self.show_starfield = not self.show_starfield
 
 
 class ScoreDisplay(object):
@@ -393,9 +402,8 @@ class Game(object):
         player_powerup = 0
 
         sprites = pygame.sprite.Group()
-        background_sprites = pygame.sprite.Group()
 
-        self.background = Background(background_sprites)
+        self.background = Background()
 
         effects = pygame.sprite.Group()
         self.enemy_factory = EnemyFactory()
@@ -406,9 +414,6 @@ class Game(object):
         score_display_group = ScoreDisplayGroup()
 
         self.player = Player((SCREEN_WIDTH / 2, 650), sprites)
-
-        starfield = Starfield(screen)
-        show_starfield = True
 
         font = pygame.font.Font('assets/fonts/ShareTechMono-Regular.ttf', 16, bold=True)
         score_font = pygame.font.Font('assets/ssr/Bonus/kenvector_future.ttf', 25)
@@ -436,7 +441,7 @@ class Game(object):
                     if event.key == pygame.K_F1:
                         stats = not stats
                     if event.key == pygame.K_F2:
-                        show_starfield = not show_starfield
+                        self.background.toggle_starfield()
                     if event.key == pygame.K_MINUS:
                         background_music.set_volume(background_music.get_volume() - 0.1)
                     if event.key == pygame.K_EQUALS:
@@ -459,7 +464,7 @@ class Game(object):
             enemy_cooldown_timer_state -= dt
 
             # Sprite Updates
-            background_sprites.update(self.player, screen)
+            self.background.update(dt, self.player)
             self.lasers.update(dt)
             sprites.update(dt, self)
             self.enemies.update(dt)
@@ -483,9 +488,7 @@ class Game(object):
                 player_powerup = 0
 
             # Draw
-            background_sprites.draw(screen)
-            if show_starfield:
-                starfield.update(dt)
+            self.background.draw(screen)
             self.enemies.draw(screen)
             self.lasers.draw(screen)
             sprites.draw(screen)
