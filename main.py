@@ -3,8 +3,8 @@ from random import randrange, choice
 from math import copysign
 import pygame
 
-SCREEN_HEIGHT = 1000
-SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 960
+SCREEN_WIDTH = 640
 SCREEN_RECT = pygame.rect.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 FPS = 60
 
