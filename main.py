@@ -19,50 +19,43 @@ def load_image(path):
     return _image_cache[path].copy()
 
 
-class SpriteFactory(object):
+class LaserUpdateMixin(object):
     """
-    A simple Sprite factory.
+    Updates sprite positions, and destroys them when they leave the
+    top of the screen.
 
-    Sprite classes must have an ``image_file`` attribute, and accept
-    an image as thier first positional argument. All other arguments
-    passed to the factory ``spawn`` method are passed to the sprite
-    class's ``__init__`` method.
-
+    Must go first in MRO, since ``pygame.sprite.Sprite`` provides a
+    no-op ``update`` method.
     """
 
-    def __init__(self, sprite_class):
-        self.sprite_class = sprite_class
-        self.image_master = load_image(self.sprite_class.image_file)
+    def update(self, dt):
+        self.rect.x, self.rect.y = (
+            (self.rect.x + self.dx * dt),
+            (self.rect.y + self.dy * dt)
+        )
+        if self.rect.bottom < 0:
+            self.kill()
 
-    def spawn(self, *args, **kwargs):
-        image = self.image_master.copy()
-        return self.sprite_class(image, *args, **kwargs)
 
+class Laser(LaserUpdateMixin, pygame.sprite.Sprite):
 
-class Laser(pygame.sprite.Sprite):
-    image_file = 'assets/ssr/PNG/Lasers/laserBlue07.png'
-
-    def __init__(self, image, start_position, *groups, dy=400, dx=0):
+    def __init__(self, start_position, *groups, dy=-400, dx=0):
         super().__init__(*groups)
         self.dy = dy
         self.dx = dx
-        self.image = image
+        self.image = load_image('assets/ssr/PNG/Lasers/laserBlue07.png')
         self.rect = self.image.get_rect()
         self.rect.midbottom = start_position
-
-    def update(self, dt):
-        self.rect.y -= self.dy * dt
-        self.rect.x += self.dx * dt
-        if self.rect.bottom < 0:
-            self.kill()
 
 
 class LaserHit(pygame.sprite.Sprite):
     image_file = 'assets/ssr/PNG/Lasers/laserBlue08.png'
 
-    def __init__(self, image, position, *groups):
+    def __init__(self, position, *groups):
         super().__init__(*groups)
-        self.image = image
+        image = load_image('assets/ssr/PNG/Lasers/laserBlue08.png')
+        angle = randrange(1, 360)
+        self.image = pygame.transform.rotate(image, angle)
         self.rect = self.image.get_rect()
         self.rect.center = position
         self.lifespan = 0.15
@@ -84,28 +77,17 @@ class LaserHit(pygame.sprite.Sprite):
             self.kill()
 
 
-class LaserHitFactory(object):
-    def __init__(self):
-        self.image_master = load_image('assets/ssr/PNG/Lasers/laserBlue08.png')
-
-    def spawn(self, position, *groups):
-        # adjust the position up a bit because it looks better
-        position = (position[0], position[1] - 10)
-        # rotate to a random angle
-        angle = randrange(1, 360)
-        image = pygame.transform.rotate(self.image_master, angle)
-        return LaserHit(image, position, *groups)
-
-
-class SpreadLaser(Laser):
+class SpreadLaser(LaserUpdateMixin, pygame.sprite.Sprite):
     image_file = 'assets/ssr/PNG/Lasers/laserBlue08.png'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, position, *groups, dx=0, dy=-400):
+        super().__init__(*groups)
+        self.dx, self.dy = dx, dy
         self.angle = 0
-        super().__init__(*args, **kwargs)
-        self.image = pygame.transform.scale(self.image, (24, 23))
-        self.image_master = self.image.copy()
-        self.rect = self.image.get_rect(center=self.rect.center)
+        image = load_image('assets/ssr/PNG/Lasers/laserBlue08.png')
+        self.image_master = pygame.transform.scale(image, (24, 23))
+        self.image = self.image_master
+        self.rect = pygame.rect.Rect(position, self.image.get_size())
 
     def update(self, dt):
         self.angle += 230 * dt
@@ -129,8 +111,6 @@ class Player(pygame.sprite.Sprite):
         self.q_sound = pygame.mixer.Sound('assets/sound/laser_3.wav')
         self.burst_effect = pygame.mixer.Sound('assets/sound/burst.wav')
         self.powerup_sound = pygame.mixer.Sound('assets/sound/powerup_1.wav')
-        self.laser_factory = SpriteFactory(Laser)
-        self.spread_laser_factory = SpriteFactory(SpreadLaser)
         self.laser_1_cooldown = 0.2
         self.laser_1_cooldown_state = 0
         self.burst_cooldown = 5
@@ -160,17 +140,17 @@ class Player(pygame.sprite.Sprite):
         self.laser_1.play()
         self.laser_1_cooldown_state = self.laser_1_cooldown
         if self.level < 4:
-            game.lasers.add(self.laser_factory.spawn(self.rect.midtop))
+            game.lasers.add(Laser(self.rect.midtop))
         else:
-            game.lasers.add(self.laser_factory.spawn(self.rect.midleft))
-            game.lasers.add(self.laser_factory.spawn(self.rect.midright))
+            game.lasers.add(Laser(self.rect.midleft))
+            game.lasers.add(Laser(self.rect.midright))
 
     def q(self, game):
         if self.q_cooldown_state == 0:
             self.q_sound.play()
             self.q_cooldown_state = self.q_cooldown
-            game.lasers.add(self.spread_laser_factory.spawn(self.rect.topleft, dy=70, dx=-330))
-            game.lasers.add(self.spread_laser_factory.spawn(self.rect.topright, dy=70, dx=330))
+            game.lasers.add(SpreadLaser(self.rect.topleft, dy=-70, dx=-330))
+            game.lasers.add(SpreadLaser(self.rect.topright, dy=-70, dx=330))
 
     def burst(self):
         """
@@ -236,7 +216,6 @@ class Player(pygame.sprite.Sprite):
 
 class Enemy(pygame.sprite.Sprite):
     points = 100
-    image_file = 'assets/ssr/PNG/Enemies/enemyBlack3.png'
 
     def __init__(self, image, start_position, *groups, dy=50):
         super().__init__(*groups)
@@ -395,7 +374,6 @@ class Game(object):
 
         sprites = pygame.sprite.Group()
         effects = pygame.sprite.Group()
-        hit_factory = LaserHitFactory()
         self.enemy_factory = EnemyFactory()
         self.bigger_enemy_factory = BiggerEnemyFactory()
 
@@ -469,7 +447,7 @@ class Game(object):
             for enemy, lasers in hits.items():
                 # Hit effect
                 laser = lasers[0]
-                hit_factory.spawn(laser.rect.midtop, effects)
+                LaserHit(laser.rect.midtop, effects)
                 is_destroyed = enemy.hit()
                 if is_destroyed:
                     player_score += enemy.points
