@@ -128,7 +128,7 @@ class Player(pygame.sprite.Sprite):
         self.burst_force = 250
         self.dx = 0
         self.dy = 0
-        self.level = 4
+        self.level = 1
 
     def thrust_left(self, dt):
         self.dx -= self.HORIZONTAL_MOVE
