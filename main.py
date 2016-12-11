@@ -1,4 +1,5 @@
 import os
+from collections import namedtuple
 from random import randrange, choice
 from math import copysign
 import pygame
@@ -97,6 +98,9 @@ class SpreadLaser(LaserUpdateMixin, pygame.sprite.Sprite):
         super().update(dt)
 
 
+Ability = namedtuple('Ability', ['label', 'cooldown', 'cooldown_state'])
+
+
 class Player(pygame.sprite.Sprite):
     HORIZONTAL_MOVE = 15
     VERTICAL_MOVE = 5
@@ -126,9 +130,9 @@ class Player(pygame.sprite.Sprite):
         self.powerup_sound = pygame.mixer.Sound('assets/sound/powerup_1.wav')
         self.laser_1_cooldown = 0.2
         self.laser_1_cooldown_state = 0
-        self.burst_cooldown = 5
+        self.burst_cooldown = 3
         self.burst_cooldown_state = 0
-        self.q_cooldown = 5
+        self.q_cooldown = 2
         self.q_cooldown_state = 0
         self.burst_force = 250
         self.dx = 0
@@ -229,6 +233,15 @@ class Player(pygame.sprite.Sprite):
         self.laser_1_cooldown_state = max(self.laser_1_cooldown_state - dt, 0)
         self.burst_cooldown_state = max(self.burst_cooldown_state - dt, 0)
         self.q_cooldown_state = max(self.q_cooldown_state - dt, 0)
+
+    def get_ability_states(self):
+        """
+        Returns a list of all abilities for display.
+        """
+        return (
+            Ability('Boost', self.burst_cooldown, self.burst_cooldown_state),
+            Ability('Blast', self.q_cooldown, self.q_cooldown_state),
+        )
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -404,6 +417,7 @@ class Level(object):
         background_music = config.get('background_music', 'assets/sound/music/DigitalNativeLooped.ogg')
         background_image = config.get('background_image', 'assets/art/spacefield1600x1000.png')
         self.enemy_colors = config.get('enemy_colors', ['blue', 'green'])
+        self.ability_font = pygame.font.Font('assets/ssr/Bonus/kenvector_future_thin.ttf', 10)
         self.end_score = config.get('end_score', 3000)
         self.player_powerup = 0
         self.sprites = pygame.sprite.Group()
@@ -501,6 +515,7 @@ class Level(object):
         self.sprites.draw(screen)
         self.effects.draw(screen)
         self.score_display_group.draw(screen)
+        self.display_cooldowns(screen)
 
     def end(self):
         self.enemies.empty()
@@ -521,6 +536,63 @@ class Level(object):
             self.bigger_enemy_factory.spawn(position, self.enemies, color=color,
                 dy=speed - 60)
 
+    def _display_ability(self, surface, ability):
+        BORDER = 2
+        ABILITY_COLOR = (200, 200, 200, 255)
+        label = self.ability_font.render(ability.label, True, ABILITY_COLOR)
+        surface.blit(label, (0, 0))
+        font_height = self.ability_font.get_height()
+        width = surface.get_width()
+        background_position = (0, font_height + 2)
+        background_height = surface.get_height() / 2
+        background = pygame.Rect(background_position, (width, background_height))
+        surface.fill(ABILITY_COLOR, background)
+
+        if ability.cooldown_state == 0:
+            return
+
+        # Display the cooldown by carving a transparant block out of the
+        # ability display background rectangle
+        empty_topleft = (background_position[0] + BORDER,
+                         background_position[1] + BORDER)
+        empty_height = background_height - (BORDER * 2)
+        # max_empty_width = width - (BORDER * 2)
+        empty_width = (width * ability.cooldown_state) / ability.cooldown
+
+        if empty_width < 1:
+            return
+
+        empty = pygame.Rect(empty_topleft, (empty_width, empty_height))
+        surface_rect = surface.get_rect()
+        empty.right = surface_rect.right - BORDER
+        surface.fill((255, 255, 255, 255), empty, pygame.BLEND_RGBA_SUB)
+
+    def display_cooldowns(self, screen, *abilities):
+        """
+        Each ability requires the following properties:
+
+        .cooldown: Cooldown time for the ability
+        .cooldown_state: Current time remaining before the ability is off cooldown
+        .label: Name of the ability
+        """
+        DISPLAY_HEIGHT = 40
+        BACKGROUND_COLOR = (100, 100, 100, 60)
+        DISPLAY_TOPLEFT = (0, SCREEN_HEIGHT - DISPLAY_HEIGHT)
+        background = pygame.Surface((SCREEN_WIDTH, DISPLAY_HEIGHT), pygame.SRCALPHA)
+        background.fill(BACKGROUND_COLOR)
+        MARGIN = 10
+
+        ability_states = self.player.get_ability_states()
+        ABILITY_WIDTH = 140
+        x = MARGIN
+
+        for ability in ability_states:
+            s = pygame.Surface((ABILITY_WIDTH, DISPLAY_HEIGHT - MARGIN), pygame.SRCALPHA)
+            self._display_ability(s, ability)
+            background.blit(s, (x, 2))
+            x = x + ABILITY_WIDTH + MARGIN
+        screen.blit(background, DISPLAY_TOPLEFT)
+
 
 class Game(object):
     def load_levels(self):
@@ -535,7 +607,7 @@ class Game(object):
             },
             {
                 'background_music': 'assets/sound/music/techno_gameplay_loop.ogg',
-                'background_image': 'assets/art/spacefield1600x1000.png',
+                'background_image': 'assets/art/starfield_2_1000x960.png',
                 'enemy_colors': ['green', 'blue'],
                 'end_score': 3000,
             },
