@@ -549,7 +549,8 @@ class Game(object):
         for config in configs:
             yield Level(**config)
         # Keep playing the last level
-        yield Level(**configs[-1])
+        while True:
+            yield Level(**configs[-1])
 
     def run(self, screen):
         stats = False
