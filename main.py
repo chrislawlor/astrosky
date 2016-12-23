@@ -288,6 +288,7 @@ class EnemyFactory(object):
             'black': pygame.transform.scale(load_image('assets/ssr/PNG/Enemies/enemyBlack3.png'), scale),
             'blue': pygame.transform.scale(load_image('assets/ssr/PNG/Enemies/enemyBlue3.png'), scale),
             'green': pygame.transform.scale(load_image('assets/ssr/PNG/Enemies/enemyGreen3.png'), scale),
+            'red': pygame.transform.scale(load_image('assets/ssr/ssr_ex/Ships/spaceShips_008.png'), scale)
         }
 
     def spawn(self, position, *groups, color=None, **kwargs):
@@ -303,6 +304,7 @@ class BiggerEnemyFactory(object):
             'black': load_image('assets/ssr/PNG/Enemies/enemyBlack4.png'),
             'blue': load_image('assets/ssr/PNG/Enemies/enemyBlue4.png'),
             'green': load_image('assets/ssr/PNG/Enemies/enemyGreen4.png'),
+            'red': load_image('assets/ssr/ssr_ex/Ships/spaceShips_004.png')
         }
 
     def spawn(self, position, *groups, color=None, **kwargs):
@@ -603,19 +605,25 @@ class Game(object):
                 'background_music': 'assets/sound/music/DigitalNativeLooped.ogg',
                 'background_image': 'assets/art/spacefield1600x1000.png',
                 'enemy_colors': ['green'],
-                'end_score': 2000,
+                'end_score': 20000,
             },
             {
                 'background_music': 'assets/sound/music/techno_gameplay_loop.ogg',
                 'background_image': 'assets/art/starfield_2_1000x960.png',
                 'enemy_colors': ['green', 'blue'],
-                'end_score': 3000,
+                'end_score': 20000,
             },
             {
                 'background_music': 'assets/sound/music/techno_gameplay_loop.ogg',
                 'background_image': 'assets/art/spacefield1600x1000.png',
                 'enemy_colors': ['blue', 'black'],
-                'end_score': 3000,
+                'end_score': 30000,
+            },
+            {
+                'background_music': 'assets/sound/music/techno_gameplay_loop.ogg',
+                'background_image': 'assets/art/spacefield1600x1000.png',
+                'enemy_colors': ['blue', 'black', 'red'],
+                'end_score': 40000,
             },
         ]
         for config in configs:
