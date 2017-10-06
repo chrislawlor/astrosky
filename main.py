@@ -605,11 +605,11 @@ class Game(object):
                 'background_music': 'assets/sound/music/DigitalNativeLooped.ogg',
                 'background_image': 'assets/art/spacefield1600x1000.png',
                 'enemy_colors': ['green'],
-                'end_score': 20000,
+                'end_score': 10000,
             },
             {
                 'background_music': 'assets/sound/music/techno_gameplay_loop.ogg',
-                'background_image': 'assets/art/starfield_2_1000x960.png',
+                'background_image': 'assets/art/spacefield1600x1000.png',
                 'enemy_colors': ['green', 'blue'],
                 'end_score': 20000,
             },
